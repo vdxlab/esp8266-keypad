@@ -12,6 +12,10 @@
 #define _openDoor() digitalWrite(pin_door, LOW)
 #define _closeDoor() digitalWrite(pin_door, HIGH)
 
+/* I would also add a kind of user manual for non-programmers here:
+  To change Passwords enter the password_change code, wait for the buzzer to buzz three times then enter the new password.
+  */
+
 // Assign Wifi connection to AP
 char ssid[] = "CanMasdeu";     // your network SSID (name)
 char password[] = ""; // your network key
@@ -72,11 +76,16 @@ void buzzDoor(int time){
 
 void setup() {
     // put your setup code here, to run once:
+  // Initialize hardware
   pinMode(pin_door, OUTPUT);
   digitalWrite(pin_door, HIGH); //Make sure the door is closed
-  Serial.begin(9600); //Serial communication to display 
+  
+  // Initialize System
   ESP.wdtDisable();  // turns off watchdog?
   EEPROM.begin(512);  //Initialize EEPROM
+  
+  // Initialize Serial Debug
+  Serial.begin(9600); //Serial communication to display 
   Serial.println(""); //Goto next line, as ESP sends some garbage when you reset it
   //             Print out the passwords and changes after restart - if you have serial monitor open
   Serial.print("Visitor password before reading EEPROM:"); 
@@ -99,6 +108,7 @@ void setup() {
     Serial.print("Master password after over-writing from EEPROM:");
     Serial.println(master_password_array);
   }
+  
   // Set WiFi to station mode and disconnect from an AP if it was Previously
   // connected
   WiFi.mode(WIFI_STA);
@@ -129,12 +139,13 @@ void setup() {
 
 void loop() // this is the loop that runs all the time
 {
-  doKeypad();
-  ESP.wdtFeed();
+  doKeypad(); // Check for keypad presses
+  ESP.wdtFeed(); // Kick watchdog to avoid reset (should actually be disabled but you can't be too sure)
 }
 
 
 void doKeypad() {
+  // Check for new keypress
   char key = kpd.getKey();
   if (key) {
     Serial.print("Pressed Key: ");
@@ -185,14 +196,14 @@ void doKeypad() {
         master_password_correct = 0;
       }
     }
+    
     if (master_password_correct == 1) {
       Serial.println("Correct Master Password");
       // Open Door, connect wifi if not connected
       if (WiFi.status() != WL_CONNECTED) {
         WiFi.begin(ssid, password);
       }
-      buzzDoor(door_open_time);
-      // Close door
+      buzzDoor(door_open_time);      
       
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("");
@@ -217,6 +228,7 @@ void doKeypad() {
         diagnostics_password_correct = 0;
       }
     }
+    
     if (diagnostics_password_correct == 1) {
       Serial.println("Correct Diagnostics Password");
       Serial.println(diagnostics_password_array);
