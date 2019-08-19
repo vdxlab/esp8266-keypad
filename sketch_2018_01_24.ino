@@ -8,6 +8,9 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+#define _len(_Array) (sizeof(_Array) / sizeof(_Array[0]))
+
+
 // Assign Wifi connection to AP
 char ssid[] = "CanMasdeu";     // your network SSID (name)
 char password[] = ""; // your network key
@@ -41,7 +44,7 @@ byte colPins[COLS] = {14, 12, 13};
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 char password_array[5] = {'1', '2', '3', '4', '5'}; // User Settable Password
-int password_length = 5;
+int password_length = _len(password_array);
 
 char change_password_array[6] = {'5', '6', '8', '9', '#', '*'}; // Enter this combination, wait for buzzer to stop and enter new 4 digit password
 int change_password_length = 6;
