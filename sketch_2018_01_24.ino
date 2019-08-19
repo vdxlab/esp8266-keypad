@@ -9,7 +9,8 @@
 #include <WiFiUdp.h>
 
 #define _len(_Array) (sizeof(_Array) / sizeof(_Array[0]))
-
+#define _openDoor() digitalWrite(pin_door, LOW)
+#define _closeDoor() digitalWrite(pin_door, HIGH)
 
 // Assign Wifi connection to AP
 char ssid[] = "CanMasdeu";     // your network SSID (name)
@@ -147,13 +148,13 @@ void doKeypad() {
     if (password_correct == 1) {
       Serial.println("Correct Visitor Password");
       // Open Door, connect wifi if not connected
-      digitalWrite(pin_door, LOW);
       if (WiFi.status() != WL_CONNECTED) {
         WiFi.begin(ssid, password);
       }
+      _openDoor();
       // Close door
       delay(door_open_time);
-      digitalWrite(pin_door, HIGH);
+      _closeDoor();
 
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("");
