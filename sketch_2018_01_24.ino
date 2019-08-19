@@ -8,6 +8,17 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+#define _len(_Array) (sizeof(_Array) / sizeof(_Array[0]))
+#define _openDoor() digitalWrite(pin_door, LOW)
+#define _closeDoor() digitalWrite(pin_door, HIGH)
+
+#define PASSWORD_OFFSET 0
+#define MASTER_PASSWORD_OFFSET password_length
+
+/* I would also add a kind of user manual for non-programmers here:
+  To change Passwords enter the password_change code, wait for the buzzer to buzz three times then enter the new password.
+  */
+
 // Assign Wifi connection to AP
 char ssid[] = "CanMasdeu";     // your network SSID (name)
 char password[] = ""; // your network key
@@ -41,7 +52,7 @@ byte colPins[COLS] = {14, 12, 13};
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 char password_array[5] = {'1', '2', '3', '4', '5'}; // User Settable Password
-int password_length = 5;
+int password_length = _len(password_array);
 
 char change_password_array[6] = {'5', '6', '8', '9', '#', '*'}; // Enter this combination, wait for buzzer to stop and enter new 4 digit password
 int change_password_length = 6;
@@ -60,13 +71,24 @@ char input_array[9]; // Circular Buffer for the last pressed buttons
 char input_array_length = 9;
 int input_pos = 0; // Points to next location in circular buffer to be pressed
 
+void buzzDoor(int time){
+      _openDoor();
+      delay(time);
+      _closeDoor();
+}
+
 void setup() {
     // put your setup code here, to run once:
+  // Initialize hardware
   pinMode(pin_door, OUTPUT);
   digitalWrite(pin_door, HIGH); //Make sure the door is closed
-  Serial.begin(9600); //Serial communication to display 
+  
+  // Initialize System
   ESP.wdtDisable();  // turns off watchdog?
   EEPROM.begin(512);  //Initialize EEPROM
+  
+  // Initialize Serial Debug
+  Serial.begin(9600); //Serial communication to display 
   Serial.println(""); //Goto next line, as ESP sends some garbage when you reset it
   //             Print out the passwords and changes after restart - if you have serial monitor open
   Serial.print("Visitor password before reading EEPROM:"); 
@@ -89,6 +111,7 @@ void setup() {
     Serial.print("Master password after over-writing from EEPROM:");
     Serial.println(master_password_array);
   }
+  
   // Set WiFi to station mode and disconnect from an AP if it was Previously
   // connected
   WiFi.mode(WIFI_STA);
@@ -119,12 +142,13 @@ void setup() {
 
 void loop() // this is the loop that runs all the time
 {
-  doKeypad();
-  ESP.wdtFeed();
+  doKeypad(); // Check for keypad presses
+  ESP.wdtFeed(); // Kick watchdog to avoid reset (should actually be disabled but you can't be too sure)
 }
 
 
 void doKeypad() {
+  // Check for new keypress
   char key = kpd.getKey();
   if (key) {
     Serial.print("Pressed Key: ");
@@ -144,13 +168,13 @@ void doKeypad() {
     if (password_correct == 1) {
       Serial.println("Correct Visitor Password");
       // Open Door, connect wifi if not connected
-      digitalWrite(pin_door, LOW);
       if (WiFi.status() != WL_CONNECTED) {
         WiFi.begin(ssid, password);
       }
+      _openDoor();
       // Close door
       delay(door_open_time);
-      digitalWrite(pin_door, HIGH);
+      _closeDoor();
 
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("");
@@ -175,16 +199,14 @@ void doKeypad() {
         master_password_correct = 0;
       }
     }
+    
     if (master_password_correct == 1) {
       Serial.println("Correct Master Password");
       // Open Door, connect wifi if not connected
-      digitalWrite(pin_door, LOW);
       if (WiFi.status() != WL_CONNECTED) {
         WiFi.begin(ssid, password);
       }
-      // Close door      
-      delay(door_open_time);
-      digitalWrite(pin_door, HIGH);
+      buzzDoor(door_open_time);      
       
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("");
@@ -209,6 +231,7 @@ void doKeypad() {
         diagnostics_password_correct = 0;
       }
     }
+    
     if (diagnostics_password_correct == 1) {
       Serial.println("Correct Diagnostics Password");
       Serial.println(diagnostics_password_array);
@@ -262,12 +285,7 @@ void doKeypad() {
       Serial.print("New visitor password: ");
       Serial.println(password_array);
       // writes each digit to EEPROM
-      for ( int i = 0; i < password_length; ++i ) {
-        Serial.print("count is: ");
-        Serial.println(i);
-        EEPROM.write(i, password_array[i]);
-        EEPROM.commit();
-      }
+      
       
       // Five buzzes
       for (int i=0; i < 6; i++) {
@@ -295,11 +313,23 @@ void doKeypad() {
       Serial.println("The Nine buzzes confirm that new master password is saved");
       Serial.print("New Master Password: ");
       Serial.println(master_password_array);
-      // writes each digit to EEPROM
-      for ( int i = 0; i < master_password_length; ++i ) {
-        EEPROM.write(i + password_length, master_password_array[i]);
+      
+      // Write passwords to EEPROM
+      // EEPROM Byte layout:
+      // 0 ~ (password_length - 1) : password
+      // (password_length) ~ (password_length + master_password_length -1) : master password
+            
+      for ( int i = 0; i < password_length; ++i ) {
+        Serial.print("count is: ");
+        Serial.println(i);
+        EEPROM.write(PASSWORD_OFFSET + i, password_array[i]);
         EEPROM.commit();
       }
+      for ( int i = 0; i < master_password_length; ++i ) {
+        EEPROM.write(MASTER_PASSWORD_OFFSET + i, master_password_array[i]);
+        EEPROM.commit();
+      }
+      
       for (int i=0; i < 10; i++) {
         delay(door_open_time / 50);
         digitalWrite(pin_door, LOW);
