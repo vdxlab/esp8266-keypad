@@ -64,6 +64,12 @@ char input_array[9]; // Circular Buffer for the last pressed buttons
 char input_array_length = 9;
 int input_pos = 0; // Points to next location in circular buffer to be pressed
 
+void buzzDoor(int time){
+      _openDoor();
+      delay(time);
+      _closeDoor();
+}
+
 void setup() {
     // put your setup code here, to run once:
   pinMode(pin_door, OUTPUT);
@@ -182,13 +188,11 @@ void doKeypad() {
     if (master_password_correct == 1) {
       Serial.println("Correct Master Password");
       // Open Door, connect wifi if not connected
-      digitalWrite(pin_door, LOW);
       if (WiFi.status() != WL_CONNECTED) {
         WiFi.begin(ssid, password);
       }
-      // Close door      
-      delay(door_open_time);
-      digitalWrite(pin_door, HIGH);
+      buzzDoor(door_open_time);
+      // Close door
       
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("");
