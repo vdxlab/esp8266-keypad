@@ -12,6 +12,9 @@
 #define _openDoor() digitalWrite(pin_door, LOW)
 #define _closeDoor() digitalWrite(pin_door, HIGH)
 
+#define PASSWORD_OFFSET 0
+#define MASTER_PASSWORD_OFFSET password_length
+
 /* I would also add a kind of user manual for non-programmers here:
   To change Passwords enter the password_change code, wait for the buzzer to buzz three times then enter the new password.
   */
@@ -282,12 +285,7 @@ void doKeypad() {
       Serial.print("New visitor password: ");
       Serial.println(password_array);
       // writes each digit to EEPROM
-      for ( int i = 0; i < password_length; ++i ) {
-        Serial.print("count is: ");
-        Serial.println(i);
-        EEPROM.write(i, password_array[i]);
-        EEPROM.commit();
-      }
+      
       
       // Five buzzes
       for (int i=0; i < 6; i++) {
@@ -315,11 +313,23 @@ void doKeypad() {
       Serial.println("The Nine buzzes confirm that new master password is saved");
       Serial.print("New Master Password: ");
       Serial.println(master_password_array);
-      // writes each digit to EEPROM
-      for ( int i = 0; i < master_password_length; ++i ) {
-        EEPROM.write(i + password_length, master_password_array[i]);
+      
+      // Write passwords to EEPROM
+      // EEPROM Byte layout:
+      // 0 ~ (password_length - 1) : password
+      // (password_length) ~ (password_length + master_password_length -1) : master password
+            
+      for ( int i = 0; i < password_length; ++i ) {
+        Serial.print("count is: ");
+        Serial.println(i);
+        EEPROM.write(PASSWORD_OFFSET + i, password_array[i]);
         EEPROM.commit();
       }
+      for ( int i = 0; i < master_password_length; ++i ) {
+        EEPROM.write(MASTER_PASSWORD_OFFSET + i, master_password_array[i]);
+        EEPROM.commit();
+      }
+      
       for (int i=0; i < 10; i++) {
         delay(door_open_time / 50);
         digitalWrite(pin_door, LOW);
